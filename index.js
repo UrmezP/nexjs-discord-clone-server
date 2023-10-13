@@ -25,6 +25,9 @@ const io = new Server(server, {
 // array of users
 const allUsers = [];
 
+// array of rooms
+const allRooms = [];
+
 function addNewUser(userObj) {
   allUsers.push(userObj);
   console.log(allUsers);
@@ -50,7 +53,7 @@ app.post("/checkUserExists", (req, res) => {
     res.status(201).json({ message: "New user created!" });
   } else {
     console.error("username taken");
-    res.status(401).json({ message: "User already exists" });
+    res.status(401).json({ message: "User already in GlobalChat room!" });
   }
 });
 
