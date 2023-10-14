@@ -12,8 +12,6 @@ app.use(cors());
 
 // create application/json parser
 app.use(bodyParser.json());
-// parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }));
 
 const server = createServer(app);
 const io = new Server(server, {
@@ -23,14 +21,21 @@ const io = new Server(server, {
 });
 
 // array of users
-const allUsers = [];
+var allUsers = [];
 
 // array of rooms
 const allRooms = [];
 
-function addNewUser(userObj) {
+function addUser(userObj) {
   allUsers.push(userObj);
-  console.log(allUsers);
+}
+function removeUser(user) {
+  allUsers = allUsers.filter((us) => {
+    if (us.username != user) {
+      return true;
+    }
+    return false;
+  });
 }
 function checkUserExists(userObj) {
   const result = allUsers.findIndex((user) => {
@@ -49,29 +54,35 @@ app.post("/checkUserExists", (req, res) => {
   const exists = checkUserExists(userObj);
 
   if (!exists) {
-    addNewUser(userObj);
+    addUser(userObj);
     res.status(201).json({ message: "New user created!" });
   } else {
-    console.error("username taken");
     res.status(401).json({ message: "User already in GlobalChat room!" });
   }
 });
 
+// ******************************************************************
+
 io.on("connection", (socket) => {
   console.log("a user connected with id " + socket.id);
 
-  // manage click event
-  socket.on("globalchatsubmithandler", (msg) => {
-    console.log(
-      "User " +
-        msg.userId +
-        " sent message " +
-        msg.message.text +
-        " from socket : " +
-        msg.message.socketId
-    );
+  // on every new connection update the allUserslist
+  socket.on("fireAllUsersUpdated", () => {
+    io.emit("allUsersUpdated", allUsers);
+  });
 
+  // handle send for globalchat
+  socket.on("globalchatsubmithandler", (msg) => {
+    console.log("User: " + msg.userId + " sent: " + msg.message.text);
     io.emit("globalchatappend", msg);
+  });
+
+  // handle logout of user
+  socket.on("logoutuser", (data) => {
+    const userData = JSON.parse(data);
+    removeUser(userData.username);
+    console.log(`${userData.username} logged out`);
+    io.emit("allUsersUpdated", allUsers);
   });
 
   socket.on("disconnect", (msg) => {
@@ -80,5 +91,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(process.env.PORT || 3001, () => {
-  console.log("server running at http://localhost:3001");
+  console.log("server running!");
 });
